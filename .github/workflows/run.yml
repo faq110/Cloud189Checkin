@@ -1,81 +1,81 @@
-名称：云检查操作
-在:
-  推:
-    分支:
-      - 主页
-  观看:
-    类型： 已开始
-  工作流派送:
-  日程安排:
+name: Cloud check in action
+on:
+  push:
+    branches:
+      - main
+  watch:
+    types: started
+  workflow_dispatch:
+  schedule:
     - cron: 13 2 * * *
-工作:
-  构建和部署:
-    运行于：ubuntu-latest
-    环境：用户
-    步骤:
-      - 名称: 🔀 随机延迟 0-300 秒
-        运行： 睡眠 $((RANDOM % 301))
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: user
+    steps:
+      - name: 🔀 random delay 0-300 seconds
+        run: sleep $((RANDOM % 301))
 
-      - 名字: 🔌 查看代码
-        使用：actions/checkout@main
+      - name: 🔌 Check out code
+        uses: actions/checkout@main
 
-      - 名称: 🔨 设置 Node.js 环境
-        使用：actions/setup-node@main
-        与：
-          节点版本： 18
-          缓存: npm
+      - name: 🔨 Setup Node.js environment
+        uses: actions/setup-node@main
+        with:
+          node-version: 18
+          cache: npm
 
-      - 名称: 👾 检查调试是否为真
-        如果：vars.debug == '1'
-        运行： |
+      - name: 👾 Check if Debug is true
+        if: vars.debug == '1'
+        run: |
           echo "CLOUD189_VERBOSE=1" >> $GITHUB_ENV
       
-      - 名称: 📹 恢复缓存的Cookie
-        id： 缓存-饼干-恢复
-        使用：actions/cache/restore@v4
-        与：
-          路径: .令牌
-          key：${{ runner.os }}-cache-token
-          恢复密钥：${{ runner.os }}-缓存令牌-
+      - name: 📹 Restore cached Cookie
+        id: cache-cookie-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .token
+          key: ${{ runner.os }}-cache-token
+          restore-keys: ${{ runner.os }}-cache-token-
 
-      - 名称: 🔧 初始化秘密
-        使用：shine1594/环境行动的秘密@master
-        与：
-          秘密：${{ toJSON(秘密) }}
-          secrets_env：生产
-          前缀积：""
-          file_name_prod：.env
+      - name: 🔧 Init secrets
+        uses: shine1594/secrets-to-env-action@master
+        with:
+          secrets: ${{ toJSON(secrets) }}
+          secrets_env: production
+          prefix_prod: ""
+          file_name_prod: .env
 
-      - 名称: 📡 初始化依赖
-        运行： npm install
+      - name: 📡 Init dependencies
+        run: npm install
 
-      - 名称: 🚀 运行
-        使用：nick-fields/retry@master
-        与：
-          超时分钟数： 30
-          最大尝试次数： 3
-          命令：npm start
+      - name: 🚀 Run
+        uses: nick-fields/retry@master
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          command: npm start
       
-      - 名称: 📹 保存缓存的Cookie
-        使用：actions/cache/save@v4
-        与：
-          路径: .令牌
-          key：${{ runner.os }}-cache-token-${{ hashFiles(''.token/*.json') }}
+      - name: 📹 Save cached Cookie
+        uses: actions/cache/save@v4
+        with:
+          path: .token
+          key: ${{ runner.os }}-cache-token-${{ hashFiles('.token/*.json') }}
 
-      - 名字: 🚗 持续奔跑
-        如果：github.事件名称 == '计划'
-        运行： |
+      - name: 🚗 Keep Running
+        if: github.event_name == 'schedule'
+        run: |
           git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
           git config --local user.name "${{ github.actor }}"
           git remote set-url origin https://${{ github.actor }}:${{ github.token }}@github.com/${{ github.repository }}
-          git 拉取 -- 重新合并 -- 自动保存
-          git commit --allow-empty -m "继续运行..."
-          git 推送
+          git pull --rebase --autostash
+          git commit --allow-empty -m "Keep Running..."
+          git push
 
-      - name: 🎉 删除旧的工作流运行
-        使用： Mattraks/delete-workflow-runs@main
-        与：
-          令牌：${{ github.令牌 }}
-          代码库: ${{ github代码库 }}
-          保留天数：0
-          保持最低运行次数： 50
+      - name: 🎉 Delete old workflow run
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 50
